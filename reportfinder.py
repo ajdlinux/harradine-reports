@@ -63,7 +63,8 @@ def find_harradine_reports(agencies):
                 sleep(SLEEP_PERIOD)
                 continue
             break
-            
+
+        print("Domain:", domain, "Report:", domain_out[domain])
         if len(domain_out) % 10 == 0 or len(domain_out) == len(domains):
             print("Domains searched:", len(domain_out))
         #print(domain, domain_out[domain])
