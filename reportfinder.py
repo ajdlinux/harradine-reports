@@ -15,6 +15,8 @@ from urllib.parse import urlparse
 from azure.cognitiveservices.search.websearch import WebSearchAPI
 from msrest.authentication import CognitiveServicesCredentials
 
+included_agency_types = ['A', 'B', 'E']
+
 def read_agor(filename):
     """
     Read the AGOR CSV, filter out agencies without a website, return relevant
@@ -25,6 +27,9 @@ def read_agor(filename):
         agorreader = csv.DictReader(agorfile)
         for agency in agorreader:
             if not agency['Website Address']:
+                continue
+
+            if agency['Type of Body'][0] not in included_agency_types:
                 continue
 
             # Fixes for silly issues in the data
