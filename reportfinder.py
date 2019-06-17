@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # Takes the list of agencies from the Australian Government Organisations
-# Register, and uses Google to find the best candidate page for
+# Register, and uses Bing to find the best candidate page for
 # Harradine reports on that agency's domain.
 
 # We ignore agencies in the AGOR that don't list a website.
@@ -96,6 +96,7 @@ def main():
 
     with open(sys.argv[2], 'w') as f:
         writer = csv.DictWriter(f, ['Title', 'Portfolio', 'Domain', 'ReportURL', 'ReportPageTitle'])
+        writer.writeheader()
         writer.writerows(output)
 
 if __name__ == '__main__':
