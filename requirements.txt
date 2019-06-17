@@ -1,1 +1,2 @@
-google==2.0.2
+azure-cognitiveservices-search-websearch==1.0.0
+

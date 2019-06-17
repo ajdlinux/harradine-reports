@@ -6,14 +6,14 @@
 
 # We ignore agencies in the AGOR that don't list a website.
 
+import os
 import sys
 import csv
 from time import sleep
 from urllib.parse import urlparse
-from googlesearch import search
 
-# to avoid google lockout
-SLEEP_PERIOD=10
+from azure.cognitiveservices.search.websearch import WebSearchAPI
+from msrest.authentication import CognitiveServicesCredentials
 
 def read_agor(filename):
     """
@@ -46,7 +46,7 @@ def read_agor(filename):
             agencies.append(agency_extract)
     return agencies
 
-def find_harradine_reports(agencies):
+def find_harradine_reports(agencies, client):
     domains = {agency['Domain'] for agency in agencies}
     print("# agencies:", len(agencies))
     print("# unique domains:", len(domains))
@@ -54,36 +54,43 @@ def find_harradine_reports(agencies):
     for domain in domains:
         # TODO: Could we improve accuracy by using multiple search queries and finding the intersection, etc?
         search_terms = "site:{} list of files senate order".format(domain)
-        search_obj = search(search_terms, stop=1)
-        while True:
-            try:
-                domain_out[domain] = next(search_obj, 'UNKNOWN')
-            except:
-                # wait and try some more
-                sleep(SLEEP_PERIOD)
-                continue
-            break
-
-        print("Domain:", domain, "Report:", domain_out[domain])
+        search_result = client.web.search(query=search_terms)
+        if hasattr(search_result.web_pages, 'value'):
+            page = search_result.web_pages.value[0]
+            domain_out[domain] = (page.name, page.url)
+            print("Domain:", domain, "Report:", page.url, "Page Title:", page.name)
+        else:
+            domain_out[domain] = ('UNKNOWN', 'UNKNOWN')
+            print("Domain:", domain, "NO RESULTS")
+        
         if len(domain_out) % 10 == 0 or len(domain_out) == len(domains):
             print("Domains searched:", len(domain_out))
         #print(domain, domain_out[domain])
 
     agency_out = []
     for agency in agencies:
-        agency_out.append({**agency, 'Harradine': domain_out[agency['Domain']]})
+        agency_out.append({**agency, 'ReportURL': domain_out[agency['Domain']][1], 'ReportPageTitle': domain_out[agency['Domain']][0]})
     return agency_out
 
 def main():
     if len(sys.argv) != 3:
         print("Usage: {} <AGOR input CSV> <Harradine output CSV>".format(sys.argv[0]))
         return
+
+    # Azure creds
+    try:
+        subscription_key = os.environ.get('AZURE_KEY')
+    except:
+        print("Must supply AZURE_KEY environment variable")
+        return
+    client = WebSearchAPI(CognitiveServicesCredentials(subscription_key), base_url="https://api.cognitive.microsoft.com/bing/v7.0")
+
     agencies = read_agor(sys.argv[1])
-    output = find_harradine_reports(agencies)
+    output = find_harradine_reports(agencies, client)
     # TODO: For agencies/websites without their own Harradine list, we probably want to use the portfolio department's list rather than some random result
 
     with open(sys.argv[2], 'w') as f:
-        writer = csv.DictWriter(f, ['Title', 'Portfolio', 'Domain', 'Harradine'])
+        writer = csv.DictWriter(f, ['Title', 'Portfolio', 'Domain', 'ReportURL', 'ReportPageTitle'])
         writer.writerows(output)
 
 if __name__ == '__main__':
