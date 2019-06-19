@@ -61,20 +61,31 @@ def find_harradine_reports(agencies, client):
         search_terms = "site:{} list of files senate order".format(domain)
         search_result = client.web.search(query=search_terms)
         if hasattr(search_result.web_pages, 'value'):
-            page = search_result.web_pages.value[0]
-            domain_out[domain] = (page.name, page.url)
-            print("Domain:", domain, "Report:", page.url, "Page Title:", page.name)
+            found = False
+            for page in search_result.web_pages.value:
+                if len(urlparse(page.url).path) <= 1:
+                    continue
+                if page.url.endswith("pdf") or page.url.endswith("docx"):
+                    continue
+                found = True
+                break
+            if found:
+                domain_out[domain] = (page.name, page.url)
+                print("Domain:", domain, "Report:", page.url, "Page Title:", page.name)
+            else:
+                domain_out[domain] = ('UNKNOWN', 'UNKNOWN')
+                print("Domain:", domain, "NO RESULTS")
         else:
             domain_out[domain] = ('UNKNOWN', 'UNKNOWN')
             print("Domain:", domain, "NO RESULTS")
         
         if len(domain_out) % 10 == 0 or len(domain_out) == len(domains):
             print("Domains searched:", len(domain_out))
-        #print(domain, domain_out[domain])
 
     agency_out = []
     for agency in agencies:
         agency_out.append({**agency, 'ReportURL': domain_out[agency['Domain']][1], 'ReportPageTitle': domain_out[agency['Domain']][0]})
+    agency_out.sort(key=lambda a: a['Title'])
     return agency_out
 
 def main():
